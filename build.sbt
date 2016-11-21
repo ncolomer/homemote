@@ -1,3 +1,6 @@
+import java.time.LocalDateTime.now
+import java.time.format.{DateTimeFormatter => DTF}
+
 import com.typesafe.sbt.packager.archetypes.ServerLoader
 
 val ScalaVersion = "2.11.8"
@@ -12,7 +15,7 @@ val junit = Seq(ExclusionRule("junit", "*"))
 lazy val root = (project in file(".")).
   enablePlugins(BuildInfoPlugin).
   enablePlugins(RevolverPlugin).
-  enablePlugins(DebianPlugin, JDebPackaging).
+  enablePlugins(JavaServerAppPackaging, DebianPlugin, JDebPackaging, ClasspathJarPlugin).
   settings(
     // General
     organization  := "io.homemote",
@@ -24,13 +27,18 @@ lazy val root = (project in file(".")).
     packageSummary := "Homemote Debian Package",
     packageDescription := "This is the Homemote debian installer",
     mainClass in Compile := Some("io.homemote.Homemote"),
-    version in Debian := s"${System.currentTimeMillis}~${version.value}",
+    version in Debian := s"${DTF.ofPattern("yyyyMMddHHmmss").format(now)}+${version.value}",
     daemonUser in Debian := "homemote",
     daemonGroup in Debian := "homemote",
     serverLoading in Debian := ServerLoader.Systemd,
     debianPackageDependencies in Debian ++= Seq("java8-runtime", "librxtx-java", "elasticsearch (>= 5.0.0)"),
-    mappings in Universal ++= Seq(
-      file("src/templates/application.prod.conf") -> "conf/application.conf",
+    scriptClasspath += "/usr/share/java/RXTXcomm.jar",
+    javaOptions in Universal += "-Djava.library.path=\"/usr/lib/jni/librxtxSerial.so\"",
+    mappings in Universal := (mappings in Universal).value.filter {
+      // Remove lib/ directory from uberjar (aka sbt unmanaged dependencies)
+      case(jar, _) => jar.getParentFile != unmanagedBase.value
+    } ++ Seq(
+      file("src/templates/application.conf") -> "conf/application.conf",
       file("src/templates/logback.xml") -> "conf/logback.xml"
     ),
 
@@ -65,8 +73,8 @@ lazy val root = (project in file(".")).
     libraryDependencies += "com.typesafe.akka" %% "akka-testkit" % AkkaVersion % "test",
     libraryDependencies += "com.typesafe.akka" %% "akka-http-testkit" % AkkaHttpVersion % "test",
 
-    libraryDependencies += "org.elasticsearch.test" % "framework" % ElasticsearchVersion % "test",
-    libraryDependencies += "org.apache.lucene" % "lucene-test-framework" % "6.2.0" % "test",
+    //libraryDependencies += "org.elasticsearch.test" % "framework" % ElasticsearchVersion % "test",
+    //libraryDependencies += "org.apache.lucene" % "lucene-test-framework" % "6.2.0" % "test",
 
     libraryDependencies += "org.mockito" % "mockito-core" % "1.10.19" % "test",
     libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"

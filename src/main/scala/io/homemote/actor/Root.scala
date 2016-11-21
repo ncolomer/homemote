@@ -15,7 +15,7 @@ class Root extends Actor with ActorLogging {
   import context._
 
   val address = new InetSocketTransportAddress(InetAddress.getByName("localhost"), 9300)
-  val client = new PreBuiltTransportClient(Settings.EMPTY).addTransportAddress(address)
+  val client = new PreBuiltTransportClient(Settings.builder().build()).addTransportAddress(address)
   val NodeRepository = new NodeRepository with ElasticsearchClient { val es = client }
   NodeRepository.init()
 

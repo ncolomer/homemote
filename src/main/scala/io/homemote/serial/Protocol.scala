@@ -143,8 +143,9 @@ trait Protocol {
   }
 
   /** This is the object representation of a noack. */
-  case object NoAck extends Packet {
-    val codec = provide(NoAck)
+  case class NoAck() extends Packet
+  object NoAck {
+    val codec = provide(NoAck())
   }
 
 }

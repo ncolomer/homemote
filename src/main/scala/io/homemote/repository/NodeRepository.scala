@@ -1,10 +1,9 @@
 package io.homemote.repository
 
 import io.homemote.model.Common._
-import io.homemote.model.{Battery, JsonSerde, Node}
+import io.homemote.model.{JsonSerde, Node}
 import org.elasticsearch.action.DocWriteResponse.Result
 import org.elasticsearch.index.query.QueryBuilders
-import org.joda.time.DateTime
 import spray.json._
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -18,7 +17,8 @@ trait NodeRepository extends Repository with JsonSerde {
   val Type = "nodes"
 
   override def init() = {
-    es.admin.indices.prepareCreate(Index).get
+    if (!es.admin.indices.prepareExists(Index).get.isExists)
+      es.admin.indices.prepareCreate(Index).get
   }
 
   /** Fetch a node from its id */

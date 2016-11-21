@@ -1,7 +1,6 @@
-# Overriding JAVA_OPTS
-JAVA_OPTS=-Xmx128m \
-          -Xms128m \
-          -XX:+HeapDumpOnOutOfMemoryError \
-          -XX:OnOutOfMemoryError='kill -9 %p' \
-          -Dconfig.file=/etc/homemote/application.conf \
-          -Dlogback.configurationFile=/etc/homemote/logback.xml
+
+JAVA_OPTS="-Xmx128m -Xms128m -XX:+HeapDumpOnOutOfMemoryError -XX:OnOutOfMemoryError='kill -9 %p' -Dconfig.file=/etc/homemote/application.conf -Dlogback.configurationFile=/etc/homemote/logback.xml"
+
+
+LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/lib/jni/librxtxSerial.so"
+
