@@ -13,7 +13,10 @@ trait ServiceApi {
   val serviceApi: Route =
     (get & path("ping") & complete("pong")) ~
     (get & path("version")) {
-      implicit val m = Marshaller.withFixedContentType(`application/json`) { json: String => HttpEntity(`application/json`, json) }
+      implicit val m = Marshaller.withFixedContentType(`application/json`) { json: String =>
+        HttpEntity(`application/json`, json)
+      }
       complete(BuildInfo.toJson)
     }
+
 }

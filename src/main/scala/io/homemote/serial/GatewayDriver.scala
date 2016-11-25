@@ -16,7 +16,6 @@ import scala.concurrent.duration._
 object GatewayDriver {
   
   case object Connect
-  case class InitGateway(serial: Serial)
   case class InitDriver(serial: Serial)
   case class EmitMessage(msg: OMessage)
   case object Disconnect
@@ -30,8 +29,10 @@ object GatewayDriver {
   case class GatewayError(t: Throwable)
   case class MessageEmitted(msg: OMessage)
   case class MessageReceived(msg: IMessage)
-  case class MessageAck(uuid: UUID, ack: Ack)
-  case class MessageNoAck(uuid: UUID)
+  object MessageAck { def apply(msg: Message): MessageAck = MessageAck(msg.uuid, System.currentTimeMillis - msg.timestamp) }
+  case class MessageAck(uuid: UUID, afterMs: Long)
+  object MessageNoAck { def apply(msg: Message): MessageNoAck = MessageNoAck(msg.uuid, System.currentTimeMillis - msg.timestamp) }
+  case class MessageNoAck(uuid: UUID, afterMs: Long)
 
   /** Wraps a `gnu.io.SerialPort` instance and related blocking stuff to allow mocking. */
   case class Serial(port: SerialPort) {
@@ -39,7 +40,7 @@ object GatewayDriver {
     private val os = port.getOutputStream
     val sync: (String) => Unit = (pattern) => Iterator.continually(is.read).map(_.toByte)
       .sliding(pattern.length).map(_.toArray).map(new String(_, "US-ASCII"))
-      .takeWhile(str => !pattern.equals(str)).foreach(s => {println(s); /* nop */ ()})
+      .takeWhile(str => !pattern.equals(str)).foreach(_ => /* nop */ ())
     val read: () => Array[Byte] = () => Iterator.fill(is.read)(is.read.toByte).toArray
     val write: (Array[Byte]) => Unit = (bytes) => { os.write(bytes.length); os.write(bytes); os.flush() }
   }
@@ -50,7 +51,8 @@ object GatewayDriver {
   * All communication is done exclusively with parent.
   *
   * Here is how to interact with this actor:
-  * - send either [[io.homemote.serial.GatewayDriver.Connect]] or [[io.homemote.serial.GatewayDriver.InitDriver]] to initialize state (the latter for testing purpose only)
+  * - send either [[io.homemote.serial.GatewayDriver.Connect]] or [[io.homemote.serial.GatewayDriver.InitDriver]] to
+  *   initialize state (the latter is for testing purpose only)
   * - be notified when the driver is ready by listening for [[io.homemote.serial.GatewayDriver.DriverReady]] message
   * - send [[io.homemote.serial.GatewayDriver.EmitMessage]] message to send packet through RF
   * - be notified of incoming RF packet by listening for [[io.homemote.serial.GatewayDriver.MessageReceived]] message
@@ -82,27 +84,28 @@ class GatewayDriver extends Actor with ActorLogging {
   }
 
   override def receive: Receive = {
-    // Commands
-    case Connect => doConnect()
-    case InitGateway(serial) => doInitGateway(serial)
-    case InitDriver(serial) => doInitDriver(serial)
+    case Connect => context.become(run); connect()
+    case InitDriver(serial) => context.become(run); initDriver(serial)
+  }
 
+  def run: Receive = {
+    // Commands
     case EmitMessage(msg) => queue.offer(msg)
     case Disconnect => log.info("Disconnecting..."); self ! PoisonPill
     // Lifecycle
     case SerialPortConnected(name) => log.debug("Connected on port {}", name)
-    case GatewayFound(uid, version) => log.info("Gateway found with uid {} and version {}", uid, version)
+    case GatewayFound(uid, version) => log.info("Gateway {} ({}) found", uid, version)
     case GatewayInitialized(config) => log.debug("Gateway initialized with {}", config)
-    case ref @ DriverReady => log.info("Gateway is now running!"); context.parent.forward(ref)
+    case ref @ DriverReady => log.info("Gateway ready, start listening..."); context.parent ! ref
     case GatewayError(t) => log.error(s"Driver error! ${t.getMessage}")
     // Runtime
     case MessageEmitted(msg) => log.debug("> {}", msg)
-    case ref @ MessageReceived(msg) => log.debug("< {}", msg); context.parent.forward(ref)
-    case MessageAck(uuid, ack) => log.debug("✔ {} was {}", uuid, ack)
-    case MessageNoAck(uuid) => log.debug("✘ {} was NoAck", uuid)
+    case ref @ MessageReceived(msg) => log.debug("< {}", msg); context.parent ! ref
+    case MessageAck(uuid, after) => log.debug("✔ Message {} was Ack after {}ms", uuid, after)
+    case MessageNoAck(uuid, after) => log.debug("✘ Message {} was NoAck after {}ms", uuid, after)
   }
 
-  def doConnect(): Future[Unit] = Future {
+  def connect(): Unit = Future {
     // Look for eligible port
     val identifier = CommPortIdentifier.getPortIdentifiers.map(_.asInstanceOf[CommPortIdentifier])
       .filter(_.getPortType equals CommPortIdentifier.PORT_SERIAL) // pick serial ports only
@@ -115,10 +118,10 @@ class GatewayDriver extends Actor with ActorLogging {
     port.setFlowControlMode(FLOWCONTROL_NONE)
     this.port = Some(port)
     self ! SerialPortConnected(port.getName)
-    self ! InitGateway(Serial(port))
-  } recover notifyAndTerminate
+    Serial(port)
+  } map initGateway recover notifyAndTerminate
 
-  def doInitGateway(serial: Serial): Future[Unit] = firstCompletedOf(Seq(timeout(ConnectTimeout), Future {
+  def initGateway(serial: Serial): Unit = firstCompletedOf(Seq(timeout(ConnectTimeout), Future {
     // Wait for gateway greetings
     serial.sync("gateway")
     val greeting = decode[Greeting](serial.read())
@@ -131,10 +134,10 @@ class GatewayDriver extends Actor with ActorLogging {
     serial.write(cfg.encode)
     serial.sync("ready")
     self ! GatewayInitialized(cfg)
-    self ! InitDriver(serial)
-  })) recover (notifyTimeoutAndDisconnect orElse notifyAndDisconnect)
+    serial
+  } map initDriver)) recover (notifyTimeoutAndDisconnect orElse notifyAndDisconnect)
 
-  def doInitDriver(serial: Serial): Unit = {
+  def initDriver(serial: Serial): Unit = {
     type Input = Array[Byte]
     type Output = OMessage
     pool = Some(Executors.newFixedThreadPool(2))
@@ -143,15 +146,16 @@ class GatewayDriver extends Actor with ActorLogging {
     def outputFuture: Future[OMessage] = Future(blocking(queue.take()))
     def processInput(arr: Input): Future[Unit] =
       Future(decode[IMessage](arr)) flatMap { msg =>
+        self ! MessageReceived(msg)
         if (!msg.requestAck) Future.successful(())
         else firstCompletedOf(Seq(msg.ackFuture, timeout(AckTimeout))) map {
           case Some(ack: Ack) =>
             serial.write(ack.encode)
-            self ! MessageAck(msg.uuid, ack)
+            self ! MessageAck(msg)
         } recover {
           case _ => // either None (voluntary NoAck) or Timeout (default timeout)
             serial.write(NoAck().encode)
-            self ! MessageNoAck(msg.uuid)
+            self ! MessageNoAck(msg)
         }
       }
     def processOutput(input: Future[Input], msg: Output): Future[Unit] =
@@ -161,8 +165,8 @@ class GatewayDriver extends Actor with ActorLogging {
         if (!msg.requestAck) Future.successful(())
         else firstCompletedOf(Seq(input, timeout(AckTimeout))) map {
           case arr: Input => decode[Packet](arr) match {
-            case ack: Ack => msg.ack(ack); self ! MessageAck(msg.uuid, ack)
-            case NoAck() => msg.noAck(); self ! MessageNoAck(msg.uuid)
+            case ack: Ack => msg.ack(ack); self ! MessageAck(msg)
+            case nck: NoAck => msg.noAck(); self ! MessageNoAck(msg)
             case s => throw new IllegalStateException(s"Packet $s was not expected here!")
           }
         }
@@ -172,8 +176,8 @@ class GatewayDriver extends Actor with ActorLogging {
         case arr: Array[Byte] => processInput(arr).flatMap(_ => listen(inputFuture, output))
         case msg: OMessage => processOutput(input, msg).flatMap(_ => listen(inputFuture, outputFuture))
       } recover notifyAndDisconnect
-    listen(inputFuture, outputFuture)
     self ! DriverReady
+    listen(inputFuture, outputFuture)
   }
 
   def timeout(atMost: Long): Future[Unit] = {
