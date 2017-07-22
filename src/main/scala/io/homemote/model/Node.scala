@@ -44,8 +44,8 @@ object Node {
   */
 case class Node(uniqueId: UniqueID,
                 networkId: NetworkID,
-                firstSeen: DateTime,
-                lastSeen: DateTime,
+                firstSeen: Instant,
+                lastSeen: Instant,
                 firmware: Firmware,
                 battery: Option[Battery] = None,
                 tags: Set[String] = Set.empty) {

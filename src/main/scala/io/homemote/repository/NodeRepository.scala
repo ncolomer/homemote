@@ -4,6 +4,7 @@ import io.homemote.model.{JsonSerde, NetworkID, Node, UniqueID}
 import org.elasticsearch.action.DocWriteResponse.Result
 import org.elasticsearch.action.get.GetResponse
 import org.elasticsearch.action.search.SearchResponse
+import org.elasticsearch.common.xcontent.XContentType
 import org.elasticsearch.index.query.QueryBuilders
 import org.elasticsearch.indices.TermsLookup
 import org.elasticsearch.search.SearchHit
@@ -16,7 +17,7 @@ abstract class NodeRepository extends ESRepository with JsonSerde {
 
   implicit def get2Node(get: GetResponse): Node = get.getSourceAsString.parseJson.convertTo[Node]
   implicit def hit2Node(hit: SearchHit): Node = hit.getSourceAsString.parseJson.convertTo[Node]
-  implicit def search2Nodes(res: SearchResponse): Array[Node] = res.getHits.hits.map(a => a: Node)
+  implicit def search2Nodes(res: SearchResponse): Array[Node] = res.getHits.getHits.map(a => a: Node)
 
   val Index = "node"
   val MaxNodes = 255
@@ -32,7 +33,7 @@ abstract class NodeRepository extends ESRepository with JsonSerde {
       .setFetchSource(true).setSize(1)
       .setQuery(QueryBuilders.termQuery("networkId", nid.id))
       .execute.toFuture
-      .map(_.getHits.hits.headOption)
+      .map(_.getHits.getHits.headOption)
       .collect { case Some(hit) => hit: Node }
 
   def get(uid: UniqueID): Future[Node] =
@@ -60,7 +61,7 @@ abstract class NodeRepository extends ESRepository with JsonSerde {
   def upsert(node: Node): Future[Node] = {
     val json: String = node.toJson
     es.prepareUpdate(Index, Type, node.uniqueId.id)
-      .setDoc(json)
+      .setDoc(json, XContentType.JSON)
       .setDocAsUpsert(true)
       .execute.toFuture
       .map(_.getResult)
@@ -79,6 +80,6 @@ abstract class NodeRepository extends ESRepository with JsonSerde {
       .setFetchSource(false)
       .setSize(MaxNodes)
       .execute.toFuture
-      .map(_.getHits.hits.map(_.field("networkId").getValue[Long].toInt))
+      .map(_.getHits.getHits.map(_.getField("networkId").getValue[Long].toInt))
 
 }

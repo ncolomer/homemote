@@ -7,7 +7,7 @@ import DebianConstants._
 val ScalaVersion = "2.11.11"
 val AkkaVersion = "2.4.19"
 val AkkaHttpVersion = "10.0.9"
-val ElasticsearchVersion = "5.0.1"
+val ElasticsearchVersion = "5.5.0"
 
 val log4j = Seq(ExclusionRule("org.slf4j", "slf4j-log4j12"), ExclusionRule("log4j", "*"))
 val junit = Seq(ExclusionRule("junit", "*"))
@@ -64,23 +64,25 @@ lazy val root = (project in file(".")).
     buildInfoOptions += BuildInfoOption.ToJson,
 
     // Dependencies
-    libraryDependencies += "com.typesafe.akka" %% "akka-actor" % AkkaVersion,
-    libraryDependencies += "com.typesafe.akka" %% "akka-slf4j" % AkkaVersion,
+    libraryDependencies ++= Seq(
+      "com.typesafe.akka" %% "akka-actor" % AkkaVersion,
+      "com.typesafe.akka" %% "akka-slf4j" % AkkaVersion,
 
-    libraryDependencies += "com.typesafe.akka" %% "akka-http" % AkkaHttpVersion,
-    libraryDependencies += "com.typesafe.akka" %% "akka-http-spray-json" % AkkaHttpVersion,
+      "com.typesafe.akka" %% "akka-http" % AkkaHttpVersion,
+      "com.typesafe.akka" %% "akka-http-spray-json" % AkkaHttpVersion,
 
-    libraryDependencies += "org.scodec" %% "scodec-core" % "1.10.3",
+      "org.scodec" %% "scodec-core" % "1.10.3",
 
-    libraryDependencies += "org.elasticsearch.client" % "transport" % ElasticsearchVersion,
-    libraryDependencies += "org.apache.logging.log4j" % "log4j-api" % "2.7",
-    libraryDependencies += "org.apache.logging.log4j" % "log4j-to-slf4j" % "2.7",
+      "org.elasticsearch.client" % "transport" % ElasticsearchVersion,
+      "org.apache.logging.log4j" % "log4j-to-slf4j" % "2.8.2",
 
-    libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3",
+      "ch.qos.logback" % "logback-classic" % "1.2.3",
 
-    libraryDependencies += "com.typesafe.akka" %% "akka-testkit" % AkkaVersion % "test",
-    libraryDependencies += "com.typesafe.akka" %% "akka-http-testkit" % AkkaHttpVersion % "test",
+      "com.typesafe.akka" %% "akka-testkit" % AkkaVersion % "test",
+      "com.typesafe.akka" %% "akka-http-testkit" % AkkaHttpVersion % "test",
 
-    libraryDependencies += "org.mockito" % "mockito-core" % "1.10.19" % "test",
-    libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"
+      "org.mockito" % "mockito-core" % "1.10.19" % "test",
+      "org.scalatest" %% "scalatest" % "2.2.6" % "test"
+    )
+
   )

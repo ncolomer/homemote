@@ -29,7 +29,8 @@ class Root extends Actor with ActorLogging {
     val address = new InetSocketTransportAddress(InetAddress.getByName(
       config.getString("elasticsearch.host")),
       config.getInt("elasticsearch.port"))
-    new PreBuiltTransportClient(Settings.EMPTY).addTransportAddress(address)
+    val settings = Settings.builder.put("cluster.name", "homemote").build
+    new PreBuiltTransportClient(settings).addTransportAddress(address)
   }
   trait ESClient { val es: TransportClient = esClient }
 

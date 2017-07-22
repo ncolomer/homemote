@@ -2,6 +2,7 @@ package io.homemote.repository
 
 import org.elasticsearch.action.{ActionListener, ListenableActionFuture}
 import org.elasticsearch.client.Client
+import org.elasticsearch.common.xcontent.XContentType
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future, Promise}
@@ -31,8 +32,8 @@ trait ESRepository {
   /** Ensure index is created */
   def init(): Unit = if (!es.admin.indices.prepareExists(Index).get.isExists)
     es.admin.indices.prepareCreate(Index)
-      .setSettings(Settings)
-      .addMapping(Type, s"""{"$Type":$Mapping}""")
+      .setSettings(Settings, XContentType.JSON)
+      .addMapping(Type, s"""{"$Type":$Mapping}""", XContentType.JSON)
       .get
 
   /** Index name */
