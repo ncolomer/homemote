@@ -1,6 +1,6 @@
 package io.homemote.model
 
-import org.joda.time.DateTime
+import java.time.Instant
 
 /** Example:
   * {{{
@@ -13,6 +13,6 @@ import org.joda.time.DateTime
   * }}}
   */
 case class Measure(origin: UniqueID,
-                   timestamp: DateTime,
+                   timestamp: Instant,
                    name: String,
                    value: Double)

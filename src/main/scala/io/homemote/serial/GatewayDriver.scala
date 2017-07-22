@@ -7,11 +7,13 @@ import akka.actor.{Actor, ActorLogging, PoisonPill}
 import gnu.io.SerialPort._
 import gnu.io.{CommPortIdentifier, SerialPort}
 import io.homemote.serial.Protocol._
+import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
 import scala.concurrent.Future._
 import scala.concurrent._
 import scala.concurrent.duration._
+import scala.util.matching.Regex
 
 object GatewayDriver {
   
@@ -61,14 +63,16 @@ object GatewayDriver {
 class GatewayDriver extends Actor with ActorLogging {
   import GatewayDriver._
 
-  implicit val ec = context.dispatcher
+  implicit val ec: ExecutionContextExecutor = context.dispatcher
+
+  val RFLog = LoggerFactory.getLogger("rf")
 
   val GatewaySettings = context.system.settings.config.getConfig("gateway")
-  val Pattern = GatewaySettings.getString("driver.port-pattern").r
-  val Owner = GatewaySettings.getString("driver.port-owner")
-  val ConnectTimeout = GatewaySettings.getDuration("driver.connect-timeout", TimeUnit.MILLISECONDS)
-  val BaudRate = GatewaySettings.getInt("driver.baud-rate")
-  val AckTimeout = GatewaySettings.getDuration("driver.ack-timeout", TimeUnit.MILLISECONDS)
+  val Pattern: Regex = GatewaySettings.getString("driver.port-pattern").r
+  val Owner: String = GatewaySettings.getString("driver.port-owner")
+  val ConnectTimeout: Long = GatewaySettings.getDuration("driver.connect-timeout", TimeUnit.MILLISECONDS)
+  val BaudRate: Int = GatewaySettings.getInt("driver.baud-rate")
+  val AckTimeout: Long = GatewaySettings.getDuration("driver.ack-timeout", TimeUnit.MILLISECONDS)
 
   val queue = new LinkedBlockingQueue[OMessage]()
   var port: Option[SerialPort] = None
@@ -78,7 +82,7 @@ class GatewayDriver extends Actor with ActorLogging {
   def notifyAndDisconnect: PartialFunction[Throwable, Unit] = { case t => self ! GatewayError(t); self ! Disconnect }
   def notifyTimeoutAndDisconnect: PartialFunction[Throwable, Unit] = { case t => self ! GatewayError(s"Connection ${t.getMessage}"); self ! Disconnect }
 
-  override def postStop() = {
+  override def postStop(): Unit = {
     port.foreach(_.close)
     pool.foreach(_.shutdown)
   }
@@ -94,7 +98,7 @@ class GatewayDriver extends Actor with ActorLogging {
     case Disconnect => log.info("Disconnecting..."); self ! PoisonPill
     // Lifecycle
     case SerialPortConnected(name) => log.debug("Connected on port {}", name)
-    case GatewayFound(uid, version) => log.info("Gateway {} ({}) found", uid, version)
+    case GatewayFound(uid, version) => log.info("Gateway {} found with id {}", version, uid)
     case GatewayInitialized(config) => log.debug("Gateway initialized with {}", config)
     case ref @ DriverReady => log.info("Gateway ready, start listening..."); context.parent ! ref
     case GatewayError(t) => log.error(s"Driver error! ${t.getMessage}")
@@ -107,11 +111,13 @@ class GatewayDriver extends Actor with ActorLogging {
 
   def connect(): Unit = Future {
     // Look for eligible port
-    val identifier = CommPortIdentifier.getPortIdentifiers.map(_.asInstanceOf[CommPortIdentifier])
+    val available = CommPortIdentifier.getPortIdentifiers.map(_.asInstanceOf[CommPortIdentifier])
       .filter(_.getPortType equals CommPortIdentifier.PORT_SERIAL) // pick serial ports only
       .filterNot(_.isCurrentlyOwned) // pick not used ports
+    val identifier = available
       .map(id => id.getName -> id).collectFirst { case (Pattern(), id) => id } // match port name to user pattern
-      .getOrElse(throw new IllegalArgumentException(s"No available serial port was found for pattern '$Pattern'"))
+      .getOrElse(throw new IllegalArgumentException(s"No available serial port was found for pattern '$Pattern'" +
+        s"among available ports [${available.map(_.getName).mkString(",")}]"))
     // Open port
     val port = identifier.open(Owner, ConnectTimeout.toInt).asInstanceOf[SerialPort]
     port.setSerialPortParams(BaudRate, DATABITS_8, STOPBITS_1, PARITY_NONE)
@@ -148,7 +154,7 @@ class GatewayDriver extends Actor with ActorLogging {
       Future(decode[IMessage](arr)) flatMap { msg =>
         self ! MessageReceived(msg)
         if (!msg.requestAck) Future.successful(())
-        else firstCompletedOf(Seq(msg.ackFuture, timeout(AckTimeout))) map {
+        else firstCompletedOf(Seq(msg.future, timeout(AckTimeout))) map {
           case Some(ack: Ack) =>
             serial.write(ack.encode)
             self ! MessageAck(msg)
@@ -162,11 +168,11 @@ class GatewayDriver extends Actor with ActorLogging {
       Future(msg.encode) flatMap { bytes =>
         serial.write(bytes)
         self ! MessageEmitted(msg)
-        if (!msg.requestAck) Future.successful(())
+        if (!msg.requestAck) { msg.delivered(); Future.successful(()) }
         else firstCompletedOf(Seq(input, timeout(AckTimeout))) map {
           case arr: Input => decode[Packet](arr) match {
-            case ack: Ack => msg.ack(ack); self ! MessageAck(msg)
-            case nck: NoAck => msg.noAck(); self ! MessageNoAck(msg)
+            case Ack(data) => msg.ack(data.toArray); self ! MessageAck(msg)
+            case _: NoAck => msg.noAck(); self ! MessageNoAck(msg)
             case s => throw new IllegalStateException(s"Packet $s was not expected here!")
           }
         }

@@ -1,14 +1,24 @@
 package io.homemote.model
 
-import org.joda.time.DateTime
+import java.time.Instant
 
 case class Firmware(name: String, version: String)
 
-case class Battery(voltage: Double, timestamp: DateTime = DateTime.now)
+case class Battery(voltage: Double, timestamp: Instant = Instant.now)
 
 object Node {
-  def firstSeen(uid: UniqueID, nid: NetworkID, firmware: String, version: String) = {
-    val now = DateTime.now
+  type Id = Either[NetworkID, UniqueID]
+  object Id {
+    def apply(ref: Any): Id = ref match {
+      case int: Int => Left(NetworkID(int))
+      case str: String => Right(UniqueID(str))
+      case nid: NetworkID => Left(nid)
+      case uid: UniqueID => Right(uid)
+      case _ => throw new IllegalArgumentException(s"$ref is not a Node id")
+    }
+  }
+  def apply(uid: UniqueID, nid: NetworkID, firmware: String, version: String): Node = {
+    val now = Instant.now
     Node(uid, nid, now, now, Firmware(firmware, version))
   }
 }

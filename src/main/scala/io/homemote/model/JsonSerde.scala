@@ -1,22 +1,19 @@
 package io.homemote.model
 
+import java.time.Instant
+
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import org.joda.time.DateTime
-import org.joda.time.format.DateTimeFormat
 import spray.json.{JsString, _}
 
 import scala.util.Try
 
 trait JsonSerde extends SprayJsonSupport with DefaultJsonProtocol with NullOptions {
 
-  implicit object DateTimeJsonFormat extends RootJsonFormat[DateTime] {
-    val DateTimePattern = "yyyy-MM-dd'T'HH:mm:ss.SSSZ".r
-    val Formatter = DateTimeFormat.forPattern(DateTimePattern.regex)
-    def valid(s: String): Boolean = Try(Formatter.parseMillis(s)).isSuccess
-    override def write(obj: DateTime): JsValue =
-      JsString(Formatter.print(obj))
-    override def read(json: JsValue): DateTime = json match {
-      case JsString(s) if valid(s) => Formatter.parseDateTime(s)
+  implicit object DateTimeJsonFormat extends RootJsonFormat[Instant] {
+    def valid(s: String): Boolean = Try(Instant.parse(s)).isSuccess
+    override def write(obj: Instant): JsValue = JsString(obj.toString)
+    override def read(json: JsValue): Instant = json match {
+      case JsString(s) if valid(s) => Instant.parse(s)
       case _ => deserializationError("DateTime expected")
     }
   }
@@ -39,10 +36,10 @@ trait JsonSerde extends SprayJsonSupport with DefaultJsonProtocol with NullOptio
 
   implicit val Printer = CompactPrinter
 
-  implicit val FirmwareFormat = jsonFormat2(Firmware)
-  implicit val BatteryFormat = jsonFormat2(Battery)
-  implicit val NodeJsonFormat = jsonFormat7(Node.apply)
-  implicit val MeasureJsonFormat = jsonFormat4(Measure.apply)
-  implicit val GroupJsonFormat = jsonFormat3(Group.apply)
+  implicit val FirmwareFormat: RootJsonFormat[Firmware] = jsonFormat2(Firmware)
+  implicit val BatteryFormat: RootJsonFormat[Battery] = jsonFormat2(Battery)
+  implicit val NodeJsonFormat: RootJsonFormat[Node] = jsonFormat7(Node.apply)
+  implicit val MeasureJsonFormat: RootJsonFormat[Measure] = jsonFormat4(Measure.apply)
+  implicit val GroupJsonFormat: RootJsonFormat[Group] = jsonFormat3(Group.apply)
 
 }

@@ -11,5 +11,6 @@
     </root>
 
     <logger name="io.homemote" level="DEBUG"/>
+    <logger name="io.homemote.serial.GatewayDriver" level="INFO"/>
 
 </configuration>

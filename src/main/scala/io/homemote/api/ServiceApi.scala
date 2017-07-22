@@ -8,9 +8,9 @@ import akka.http.scaladsl.server.PathMatcher._
 import akka.http.scaladsl.server.Route
 import io.homemote.BuildInfo
 
-trait ServiceApi {
+object ServiceApi {
 
-  val serviceApi: Route =
+  val route: Route =
     (get & path("ping") & complete("pong")) ~
     (get & path("version")) {
       implicit val m = Marshaller.withFixedContentType(`application/json`) { json: String =>

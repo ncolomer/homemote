@@ -2,15 +2,15 @@ package io.homemote.repository
 
 import org.elasticsearch.action.{ActionListener, ListenableActionFuture}
 import org.elasticsearch.client.Client
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future, Promise}
 
 trait ESRepository {
 
-  val log = LoggerFactory.getLogger(getClass)
+  val log: Logger = LoggerFactory.getLogger(getClass)
 
-  implicit val ec = ExecutionContext.global
+  implicit val ec: ExecutionContextExecutor = ExecutionContext.global
   implicit class ListenableActionFuture_Implicit[T](future: ListenableActionFuture[T]) {
     def toFuture: Future[T] = {
       val promise = Promise[T]()
@@ -29,7 +29,7 @@ trait ESRepository {
   }
 
   /** Ensure index is created */
-  def init() = if (!es.admin.indices.prepareExists(Index).get.isExists)
+  def init(): Unit = if (!es.admin.indices.prepareExists(Index).get.isExists)
     es.admin.indices.prepareCreate(Index)
       .setSettings(Settings)
       .addMapping(Type, s"""{"$Type":$Mapping}""")

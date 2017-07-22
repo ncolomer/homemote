@@ -2,11 +2,11 @@ import java.time.LocalDateTime.now
 import java.time.format.{DateTimeFormatter => DTF}
 
 import com.typesafe.sbt.packager.archetypes.ServerLoader
+import DebianConstants._
 
-val ScalaVersion = "2.11.8"
-val AkkaVersion = "2.4.12"
-val AkkaHttpVersion = "3.0.0-RC1"
-val SprayVersion = "1.3.4"
+val ScalaVersion = "2.11.11"
+val AkkaVersion = "2.4.19"
+val AkkaHttpVersion = "10.0.9"
 val ElasticsearchVersion = "5.0.1"
 
 val log4j = Seq(ExclusionRule("org.slf4j", "slf4j-log4j12"), ExclusionRule("log4j", "*"))
@@ -32,8 +32,19 @@ lazy val root = (project in file(".")).
     daemonGroup in Debian := "homemote",
     serverLoading in Debian := ServerLoader.Systemd,
     debianPackageDependencies in Debian ++= Seq("java8-runtime", "librxtx-java", "elasticsearch (>= 5.0.0)"),
+    //javaOptions in Universal += "-Djava.library.path=/usr/lib/jni/",
     scriptClasspath += "/usr/share/java/RXTXcomm.jar",
-    javaOptions in Universal += "-Djava.library.path=\"/usr/lib/jni/librxtxSerial.so\"",
+    bashScriptExtraDefines ++= Seq(
+      """addJava "-Xmx256m"""",
+      """addJava "-Xms256m"""",
+      """addJava "-XX:+HeapDumpOnOutOfMemoryError"""",
+      """addJava "-XX:OnOutOfMemoryError='kill -9 %p'"""",
+      """addJava "-Dconfig.file=/etc/homemote/application.conf"""",
+      """addJava "-Dlogback.configurationFile=/etc/homemote/logback.xml""""
+    ),
+    maintainerScripts in Debian := maintainerScriptsAppend((maintainerScripts in Debian).value)(
+      Postinst -> s"adduser ${(daemonUser in Debian).value} dialout"
+    ),
     mappings in Universal := (mappings in Universal).value.filter {
       // Remove lib/ directory from uberjar (aka sbt unmanaged dependencies)
       case(jar, _) => jar.getParentFile != unmanagedBase.value
@@ -65,16 +76,10 @@ lazy val root = (project in file(".")).
     libraryDependencies += "org.apache.logging.log4j" % "log4j-api" % "2.7",
     libraryDependencies += "org.apache.logging.log4j" % "log4j-to-slf4j" % "2.7",
 
-    libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.1.7",
-
-    libraryDependencies += "joda-time" % "joda-time" % "2.9.3",
-    libraryDependencies += "org.joda" % "joda-convert" % "1.8.1",
+    libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3",
 
     libraryDependencies += "com.typesafe.akka" %% "akka-testkit" % AkkaVersion % "test",
     libraryDependencies += "com.typesafe.akka" %% "akka-http-testkit" % AkkaHttpVersion % "test",
-
-    //libraryDependencies += "org.elasticsearch.test" % "framework" % ElasticsearchVersion % "test",
-    //libraryDependencies += "org.apache.lucene" % "lucene-test-framework" % "6.2.0" % "test",
 
     libraryDependencies += "org.mockito" % "mockito-core" % "1.10.19" % "test",
     libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"

@@ -1,6 +1,9 @@
 
-JAVA_OPTS="-Xmx128m -Xms128m -XX:+HeapDumpOnOutOfMemoryError -XX:OnOutOfMemoryError='kill -9 %p' -Dconfig.file=/etc/homemote/application.conf -Dlogback.configurationFile=/etc/homemote/logback.xml"
+#JAVA_OPTS+="-Xmx256m -Xms256m "
+#JAVA_OPTS+="-XX:+HeapDumpOnOutOfMemoryError "
+#JAVA_OPTS+="-XX:OnOutOfMemoryError='kill -9 %p' "
+#JAVA_OPTS+="-Dconfig.file=/etc/homemote/application.conf "
+#JAVA_OPTS+="-Dlogback.configurationFile=/etc/homemote/logback.xml "
+#JAVA_OPTS+="-cp /usr/share/java/RXTXcomm.jar "
 
-
-LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/lib/jni/librxtxSerial.so"
-
+#LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/lib/jni/librxtxSerial.so"

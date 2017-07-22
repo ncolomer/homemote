@@ -1,12 +1,13 @@
 package io.homemote.serial
 
 import java.util.UUID
+import java.util.concurrent.TimeoutException
 
 import scodec._
 import scodec.bits.{BitVector, ByteVector}
 import scodec.codecs._
 
-import scala.concurrent.{ExecutionContext, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 object Protocol extends Protocol
 
@@ -39,10 +40,10 @@ trait Protocol {
     * @param version the gateway firmware version
     */
   case class Greeting(uidBytes: ByteVector, version: String) extends Packet {
-    def uniqueId = uidBytes.toHex.grouped(2).mkString(":")
+    def uniqueId: String = uidBytes.toHex.grouped(2).mkString(":")
   }
   object Greeting {
-    val codec = (
+    val codec: Codec[Greeting] = (
         ("uidBytes" | bytes(8)) ::
         ("version" | cstring)
       ).as[Greeting]
@@ -58,7 +59,7 @@ trait Protocol {
     encryptKey.ensuring(_.length == 16, "encrypt key must be 16 bytes fixed length")
   }
   object Config {
-    val codec = (
+    val codec: Codec[Config] = (
         ("networkId" | uint8L) ::
         ("gatewayId" | uint8L) ::
         ("encryptKey" | cstring)
@@ -72,20 +73,19 @@ trait Protocol {
     val timestamp: Long = System.currentTimeMillis()
   }
 
-  trait Ackable[B <: Ackable[B]] { self: B =>
-    private val ackPromise: Promise[Option[Ack]] = Promise()
-    /** Do not acknowledge this message */
-    def noAck(): Unit = ackPromise.success(None)
-    /** Acknowledge this message */
-    def ack(): Unit = ackPromise.success(Some(Ack.empty))
-    /** Acknowledge this message with data */
-    def ack(data: Array[Byte]): Unit = ackPromise.success(Some(Ack.withData(data)))
-    /** Acknowledge this message */
-    def ack(ack: Ack): Unit = ackPromise.success(Some(ack))
-    /** Install a callback that will be notified on any ack from target node */
-    def onAck(func: PartialFunction[Option[Ack], Unit])(implicit ec: ExecutionContext): B =
-      { ackPromise.future.onSuccess(func); this }
-    val ackFuture = ackPromise.future
+  trait Deliverable[B <: Deliverable[B]] { self: B =>
+    private val promise: Promise[Option[Ack]] = Promise()
+    /** Complete and acknowledge this message without data*/
+    def ack(): Unit = promise.success(Some(Ack.empty))
+    /** Complete and acknowledge this message with data */
+    def ack(data: Array[Byte]): Unit = promise.success(Some(Ack.withData(data)))
+    /** Complete but do not acknowledge this message.
+      * May be ''normal'' or ''not expected'' depending on message's `requestAck` value. */
+    def noAck(): Unit = promise.failure(new TimeoutException())
+    /** Mark message as delivered (complete sur future with no ack). */
+    def delivered(): Unit = promise.success(None)
+    /** Message delivery future */
+    val future: Future[Option[Ack]] = promise.future
   }
 
   /** Representation of a message that transited over the air from
@@ -98,13 +98,13 @@ trait Protocol {
     * @param requestAck whether the message require an acks
     */
   case class IMessage(senderId: Int, targetId: Int, requestAck: Boolean, rssi: Int, data: ByteVector)
-    extends Message with Ackable[IMessage] {
+    extends Message with Deliverable[IMessage] {
     /** Send an answer to the node sending this message */
     def answer(data: Array[Byte], requestAck: Boolean = true): OMessage =
       new OMessage(senderId, requestAck, ByteVector(data))
   }
   object IMessage {
-    val codec = (
+    val codec: Codec[IMessage] = (
         ("senderId" | uint8L) ::
         ("targetId" | uint8L) ::
         ignore(7) :: ("requestAck" | bool) ::
@@ -120,9 +120,9 @@ trait Protocol {
     * @param data       any raw payload
     * @param requestAck whether the message require an acks
     */
-  case class OMessage(targetId: Int, requestAck: Boolean, data: ByteVector) extends Message with Ackable[OMessage]
+  case class OMessage(targetId: Int, requestAck: Boolean, data: ByteVector) extends Message with Deliverable[OMessage]
   object OMessage {
-    val codec = (
+    val codec: Codec[OMessage] = (
         ("targetId" | uint8L) ::
         ignore(7) :: ("requestAck" | bool) ::
         ("data" | variableSizeBytes(uint8L, bytes))
@@ -134,18 +134,18 @@ trait Protocol {
     * @param data an optional payload
     */
   case class Ack(data: ByteVector) extends Packet {
-    override def toString = if (data.isEmpty) "Ack" else s"Ack(data: $data)"
+    override def toString: String = if (data.isEmpty) "Ack" else s"Ack(data: $data)"
   }
   object Ack {
     def empty: Ack = Ack(ByteVector.empty)
     def withData(bytes: Array[Byte]) = Ack(ByteVector(bytes))
-    val codec = ("data" | variableSizeBytes(uint8L, bytes)).as[Ack]
+    val codec: Codec[Ack] = ("data" | variableSizeBytes(uint8L, bytes)).as[Ack]
   }
 
   /** This is the object representation of a noack. */
   case class NoAck() extends Packet
   object NoAck {
-    val codec = provide(NoAck())
+    val codec: Codec[NoAck] = provide(NoAck())
   }
 
 }
