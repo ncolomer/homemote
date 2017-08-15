@@ -1,7 +1,8 @@
 package io.homemote.extension
 
+import com.typesafe.scalalogging.LazyLogging
+import io.homemote.extension.PingNode._
 import io.homemote.model.Node
-import org.slf4j.{Logger, LoggerFactory}
 import scodec.Codec
 import scodec.bits.BitVector
 import scodec.codecs._
@@ -11,13 +12,14 @@ object PingNode {
   case class Message(success: Long, attempt: Long)
 }
 
-class PingNode extends Extension { self: Companion =>
-  import PingNode._
-  val log: Logger = LoggerFactory.getLogger(classOf[PingNode])
+class PingNode(companion: ExtensionCompanion) extends Extension with LazyLogging {
+
   override def firmware: String = "ping-node"
+
   override def handleRF: (Node, _root_.io.homemote.serial.Protocol.IMessage) => Unit = (node, msg) => {
     val decoded = Message.codec.decodeValue(BitVector(msg.data)).require
     msg.ack() // Immediately ack!
-    log.info(s"$node succeed ${decoded.success}/${decoded.attempt} (RSSI ${msg.rssi})")
+    logger.info(s"$node succeed ${decoded.success}/${decoded.attempt} (RSSI ${msg.rssi})")
   }
+
 }

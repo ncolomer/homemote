@@ -4,9 +4,10 @@ import java.time.format.{DateTimeFormatter => DTF}
 import com.typesafe.sbt.packager.archetypes.ServerLoader
 import DebianConstants._
 
-val ScalaVersion = "2.11.11"
+val ScalaVersion = "2.12.2"
 val AkkaVersion = "2.4.19"
 val AkkaHttpVersion = "10.0.9"
+val ScaldiVersion = "0.5.8"
 val ElasticsearchVersion = "5.5.0"
 
 val log4j = Seq(ExclusionRule("org.slf4j", "slf4j-log4j12"), ExclusionRule("log4j", "*"))
@@ -76,13 +77,18 @@ lazy val root = (project in file(".")).
       "org.elasticsearch.client" % "transport" % ElasticsearchVersion,
       "org.apache.logging.log4j" % "log4j-to-slf4j" % "2.8.2",
 
+      "org.scaldi" %% "scaldi" % ScaldiVersion,
+      "org.scaldi" %% "scaldi-akka" % ScaldiVersion,
+      "org.clapper" %% "classutil" % "1.1.2",
+
       "ch.qos.logback" % "logback-classic" % "1.2.3",
+      "com.typesafe.scala-logging" %% "scala-logging" % "3.7.2",
 
       "com.typesafe.akka" %% "akka-testkit" % AkkaVersion % "test",
       "com.typesafe.akka" %% "akka-http-testkit" % AkkaHttpVersion % "test",
 
       "org.mockito" % "mockito-core" % "1.10.19" % "test",
-      "org.scalatest" %% "scalatest" % "2.2.6" % "test"
+      "org.scalatest" %% "scalatest" % "3.0.3" % "test"
     )
 
   )

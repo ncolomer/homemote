@@ -1,12 +1,10 @@
 package io.homemote.repository
 
-import io.homemote.model.{Group, JsonSerde}
-import spray.json._
+import io.homemote.model.JsonSerde
+import org.elasticsearch.client.transport.TransportClient
 
-import scala.concurrent.Future
+class StateRepository(val es: TransportClient) extends ESRepository with JsonSerde {
 
-abstract class StateRepository extends ESRepository with JsonSerde {
-
-  val Index: String = "state"
+  init("state", "state")
 
 }

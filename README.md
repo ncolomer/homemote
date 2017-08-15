@@ -1,4 +1,8 @@
 
+- [ ] reset gateway before connect (soft reset via watchdog)
+- [ ] add setup message to shutter node
+- [ ] implement get / set state
+
 3D printing
 - openscad.org
 - openjscad.org

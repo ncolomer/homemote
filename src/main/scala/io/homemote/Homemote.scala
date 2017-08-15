@@ -1,7 +1,5 @@
 package io.homemote
 
-import akka.actor.{ActorSystem, Props}
-import io.homemote.actor.Root
 import org.slf4j.LoggerFactory
 
 object Homemote extends App {
@@ -15,8 +13,6 @@ object Homemote extends App {
         |  Java runtime:   ${classOf[Runtime].getPackage.getImplementationVersion}
         |""".stripMargin)
 
-  val system = ActorSystem("homemote")
-  system.actorOf(Props[Root])
-  sys.addShutdownHook(system.terminate)
+  new AppModule().initNonLazy()
 
 }

@@ -7,7 +7,7 @@ import scodec._
 import scodec.bits.{BitVector, ByteVector}
 import scodec.codecs._
 
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{Future, Promise}
 
 object Protocol extends Protocol
 

@@ -6,10 +6,11 @@ import java.util.concurrent.{ExecutorService, Executors, LinkedBlockingQueue, Ti
 import akka.actor.{Actor, ActorLogging, PoisonPill}
 import gnu.io.SerialPort._
 import gnu.io.{CommPortIdentifier, SerialPort}
+import io.homemote.serial.GatewayDriver._
 import io.homemote.serial.Protocol._
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent.Future._
 import scala.concurrent._
 import scala.concurrent.duration._
@@ -61,7 +62,6 @@ object GatewayDriver {
   * - eventually shutdown the actor by sending [[io.homemote.serial.GatewayDriver.Disconnect]]
   */
 class GatewayDriver extends Actor with ActorLogging {
-  import GatewayDriver._
 
   implicit val ec: ExecutionContextExecutor = context.dispatcher
 
@@ -83,6 +83,7 @@ class GatewayDriver extends Actor with ActorLogging {
   def notifyTimeoutAndDisconnect: PartialFunction[Throwable, Unit] = { case t => self ! GatewayError(s"Connection ${t.getMessage}"); self ! Disconnect }
 
   override def postStop(): Unit = {
+    log.debug("stopping")
     port.foreach(_.close)
     pool.foreach(_.shutdown)
   }
@@ -100,7 +101,7 @@ class GatewayDriver extends Actor with ActorLogging {
     case SerialPortConnected(name) => log.debug("Connected on port {}", name)
     case GatewayFound(uid, version) => log.info("Gateway {} found with id {}", version, uid)
     case GatewayInitialized(config) => log.debug("Gateway initialized with {}", config)
-    case ref @ DriverReady => log.info("Gateway ready, start listening..."); context.parent ! ref
+    case ref @ DriverReady => log.info("Gateway is ready, start listening..."); context.parent ! ref
     case GatewayError(t) => log.error(s"Driver error! ${t.getMessage}")
     // Runtime
     case MessageEmitted(msg) => log.debug("> {}", msg)
@@ -111,7 +112,7 @@ class GatewayDriver extends Actor with ActorLogging {
 
   def connect(): Unit = Future {
     // Look for eligible port
-    val available = CommPortIdentifier.getPortIdentifiers.map(_.asInstanceOf[CommPortIdentifier])
+    val available = CommPortIdentifier.getPortIdentifiers.asScala.map(_.asInstanceOf[CommPortIdentifier])
       .filter(_.getPortType equals CommPortIdentifier.PORT_SERIAL) // pick serial ports only
       .filterNot(_.isCurrentlyOwned) // pick not used ports
     val identifier = available
