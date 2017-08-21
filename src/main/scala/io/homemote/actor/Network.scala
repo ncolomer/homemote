@@ -48,28 +48,26 @@ class Network(implicit inj: Injector) extends Actor with ActorLogging with AkkaI
     case GatewayDriver.MessageReceived(msg) if broadcast(msg) =>
       val req = IDRequest.codec.decodeValue(BitVector(msg.data)).require
       nodeRepository.get(req.uniqueId) map {
-        old =>
-          val node = old.copy(lastSeen = Instant.now, firmware = Firmware(req.firmware, req.version))
-          msg.ack(Array(node.networkId.id.toByte))
-          log.debug("Node {} joined network", node)
-          node
-      } recover {
-        case _ =>
+        case None =>
           val node = Node(req.uniqueId, NetworkID(free.dequeue), req.firmware, req.version)
           msg.ack(Array(node.networkId.id.toByte))
           log.info("New node {} discovered", node)
+          node
+        case Some(old) =>
+          val node = old.copy(lastSeen = Instant.now, firmware = Firmware(req.firmware, req.version))
+          msg.ack(Array(node.networkId.id.toByte))
+          log.debug("Node {} joined network", node)
           node
       } map nodeRepository.upsert recover { case _ => msg.noAck() }
 
     case GatewayDriver.MessageReceived(msg) =>
       nodeRepository.get(NetworkID(msg.senderId)) map {
-        node => // Forward message
-          nodeRepository.upsert(node.copy(lastSeen = Instant.now))
-          context.parent ! NodeMessage(node, msg)
-      } recover {
-        case _ => // FIXME reset the node!
+        case None => // FIXME reset the node!
           log.warning("Node is unknown for message {}", msg)
           msg.noAck()
+        case Some(node) => // Forward message
+          nodeRepository.upsert(node.copy(lastSeen = Instant.now))
+          context.parent ! NodeMessage(node, msg)
       }
 
   }

@@ -6,6 +6,12 @@ clean:
 	docker-compose rm -fv
 
 run:
-	docker-compose -f docker-compose.yml up -d
+	docker-compose up -d
 	sbt "runMain io.homemote.Homemote"
 
+test:
+	docker-compose up -d
+	sbt test
+
+deb:
+	sbt debian:packageBin

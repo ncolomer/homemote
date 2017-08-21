@@ -1,10 +1,13 @@
 package io.homemote.repository
 
-import io.homemote.model.JsonSerde
-import org.elasticsearch.client.transport.TransportClient
+import io.homemote.model.{State, UniqueID}
 
-class StateRepository(val es: TransportClient) extends ESRepository with JsonSerde {
+import scala.concurrent.Future
 
-  init("state", "state")
+trait StateRepository {
+
+  def setState(id: UniqueID, key: String, value: String): Future[State]
+
+  def getState(id: UniqueID, key: String): Future[Option[State]]
 
 }

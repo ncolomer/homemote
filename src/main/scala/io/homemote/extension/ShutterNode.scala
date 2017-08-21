@@ -1,10 +1,11 @@
 package io.homemote.extension
 
-import akka.http.scaladsl.model.StatusCodes.{GatewayTimeout, OK}
+import akka.http.scaladsl.model.StatusCodes.{GatewayTimeout, NotFound, OK}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import io.homemote.api.CustomPathMatchers._
+import io.homemote.api.NodeApi.complete
 import io.homemote.extension.ShutterNode._
 import io.homemote.model.Node
 import io.homemote.serial.Protocol.{IMessage, OMessage, _}
@@ -12,7 +13,7 @@ import scodec.Codec
 import scodec.bits.BitVector
 import scodec.codecs._
 
-import scala.util.Success
+import scala.util.{Failure, Success}
 
 object ShutterNode {
   object Command extends Enumeration { val off, up, down, sunshine, percent = Value }
@@ -34,10 +35,13 @@ class ShutterNode(companion: ExtensionCompanion) extends Extension with LazyLogg
     (post & path(NodeId / s"(${Command.values.mkString("|")})".r)) { case (id, cmd) =>
       def toMessage(node: Node) = OMessage(node.networkId.id, requestAck = true,
         Message.codec.encode(Message(Command.withName(cmd))).require.toByteVector)
-      onComplete(companion.getNode(id).map(toMessage).flatMap(companion.emit)) {
-        case Success(Some(_: Ack)) => complete(OK -> s"Sent command $cmd to node $id")
-        case _ => complete(GatewayTimeout -> s"Command $cmd to node $id timed out")
-      }
+      onComplete(companion.getNode(id)
+        .collect { case Some(node) => toMessage(node) }
+        .flatMap(companion.emit)) {
+          case Success(Some(_: Ack)) => complete(OK -> s"Sent command $cmd to node $id")
+          case Failure(e: NoSuchElementException) => complete(NotFound -> s"Node $id was not found")
+          case _ => complete(GatewayTimeout -> s"Command $cmd to node $id timed out")
+        }
     }
 
 }

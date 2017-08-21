@@ -77,6 +77,10 @@ lazy val root = (project in file(".")).
       "org.elasticsearch.client" % "transport" % ElasticsearchVersion,
       "org.apache.logging.log4j" % "log4j-to-slf4j" % "2.8.2",
 
+      "com.typesafe.play" %% "play-jdbc" % "2.6.3",
+      "com.typesafe.play" %% "anorm" % "2.5.3",
+      "org.postgresql" % "postgresql" % "42.1.4",
+
       "org.scaldi" %% "scaldi" % ScaldiVersion,
       "org.scaldi" %% "scaldi-akka" % ScaldiVersion,
       "org.clapper" %% "classutil" % "1.1.2",
@@ -87,8 +91,13 @@ lazy val root = (project in file(".")).
       "com.typesafe.akka" %% "akka-testkit" % AkkaVersion % "test",
       "com.typesafe.akka" %% "akka-http-testkit" % AkkaHttpVersion % "test",
 
+      "com.h2database" % "h2" % "1.4.196" % "test",
+
       "org.mockito" % "mockito-core" % "1.10.19" % "test",
       "org.scalatest" %% "scalatest" % "3.0.3" % "test"
-    )
+    ),
+
+    // Other
+    parallelExecution in Test := false
 
   )

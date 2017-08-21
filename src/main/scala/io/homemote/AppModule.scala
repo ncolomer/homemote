@@ -1,36 +1,35 @@
 package io.homemote
 
-import java.net.InetAddress
-
 import akka.actor.ActorSystem
 import com.typesafe.config.{Config, ConfigFactory}
 import io.homemote.actor.{HttpApi, Network, Router}
 import io.homemote.extension.{ExtensionCompanion, PingNode, ShutterNode, WaterNode}
-import io.homemote.repository.{GroupRepository, MeasureRepository, NodeRepository, StateRepository}
+import io.homemote.repository._
+import io.homemote.repository.postgres._
 import io.homemote.serial.GatewayDriver
-import org.elasticsearch.client.transport.TransportClient
-import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.common.transport.InetSocketTransportAddress
-import org.elasticsearch.transport.client.PreBuiltTransportClient
+import play.api.db.{Database, Databases}
 import scaldi.akka.AkkaInjectable
 
 class AppModule extends scaldi.Module {
 
   bind[Config] to ConfigFactory.load
 
-  bind [TransportClient] to {
-    val config = inject[Config]
-    val address = new InetSocketTransportAddress(InetAddress.getByName(
-      config.getString("elasticsearch.host")),
-      config.getInt("elasticsearch.port"))
-    val settings = Settings.builder.put("cluster.name", "homemote").build
-    new PreBuiltTransportClient(settings).addTransportAddress(address)
-  }
+  bind[Database] to {
+    val config = inject [Config]
+    Databases(
+      name = "homemote",
+      driver = "org.postgresql.Driver",
+      url = config.getString("db.url"),
+      config = Map(
+        "username" -> config.getString("db.username"),
+        "password" -> config.getString("db.password")
+      ))
+  } destroyWith (_.shutdown)
 
-  binding to injected [NodeRepository]
-  binding to injected [GroupRepository]
-  binding to injected [MeasureRepository]
-  binding to injected [StateRepository]
+  bind [NodeRepository] to injected [PGNodeRepository]
+  bind [GroupRepository] to injected [PGGroupRepository]
+  bind [MeasureRepository] to injected [PGMeasureRepository]
+  bind [StateRepository] to injected [PGStateRepository]
 
   binding to new ExtensionCompanion()
   binding to injected [PingNode]
