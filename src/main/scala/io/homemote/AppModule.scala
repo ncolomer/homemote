@@ -7,6 +7,7 @@ import io.homemote.extension.{ExtensionCompanion, PingNode, ShutterNode, WaterNo
 import io.homemote.repository._
 import io.homemote.repository.postgres._
 import io.homemote.serial.GatewayDriver
+import play.api.db.evolutions.Evolutions
 import play.api.db.{Database, Databases}
 import scaldi.akka.AkkaInjectable
 
@@ -16,7 +17,7 @@ class AppModule extends scaldi.Module {
 
   bind[Database] to {
     val config = inject [Config]
-    Databases(
+    val db = Databases(
       name = "homemote",
       driver = "org.postgresql.Driver",
       url = config.getString("db.url"),
@@ -24,6 +25,8 @@ class AppModule extends scaldi.Module {
         "username" -> config.getString("db.username"),
         "password" -> config.getString("db.password")
       ))
+    Evolutions.applyEvolutions(db)
+    db
   } destroyWith (_.shutdown)
 
   bind [NodeRepository] to injected [PGNodeRepository]

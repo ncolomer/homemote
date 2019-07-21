@@ -10,15 +10,6 @@ import scala.concurrent.{Future, blocking}
 
 class PGGroupRepository(db: Database) extends GroupRepository with PGRepository {
 
-  db.withConnection { implicit connection =>
-    SQL(
-      """CREATE TABLE IF NOT EXISTS "group" (
-        |  name VARCHAR PRIMARY KEY,
-        |  tags VARCHAR[] NOT NULL,
-        |  groups VARCHAR[] NOT NULL
-        |)""".stripMargin).execute()
-  }
-
   override def get(name: String): Future[Option[Group]] =
     Future(db.withConnection { implicit connection =>
       implicit val setStringParser: Column[Set[String]] = parser[Set[String]] {

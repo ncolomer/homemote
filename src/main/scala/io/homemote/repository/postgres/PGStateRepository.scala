@@ -12,17 +12,6 @@ import scala.concurrent.{Future, blocking}
 
 class PGStateRepository(db: Database) extends StateRepository with PGRepository {
 
-  db.withConnection { implicit connection =>
-    SQL(
-      """CREATE TABLE IF NOT EXISTS "state" (
-        |  origin VARCHAR NOT NULL,
-        |  updated TIMESTAMP NOT NULL,
-        |  key VARCHAR NOT NULL,
-        |  value VARCHAR NOT NULL,
-        |  PRIMARY KEY (origin, key)
-        |)""".stripMargin).execute()
-  }
-
   override def setState(node: UniqueID, key: String, value: String): Future[State] =
     Future(db.withConnection { implicit connection =>
       val now = Instant.now

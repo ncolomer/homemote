@@ -1,22 +1,19 @@
 import java.time.LocalDateTime.now
 import java.time.format.{DateTimeFormatter => DTF}
+import scala.sys.process._
 
-import com.typesafe.sbt.packager.archetypes.ServerLoader
+import com.typesafe.sbt.packager.archetypes.systemloader.ServerLoader.Systemd
 import DebianConstants._
 
-val ScalaVersion = "2.12.2"
-val AkkaVersion = "2.4.19"
-val AkkaHttpVersion = "10.0.9"
+val ScalaVersion = "2.12.8"
+val AkkaVersion = "2.5.23"
+val AkkaHttpVersion = "10.1.9"
 val ScaldiVersion = "0.5.8"
-val ElasticsearchVersion = "5.5.0"
+val PlayVersion = "2.7.3"
 
-val log4j = Seq(ExclusionRule("org.slf4j", "slf4j-log4j12"), ExclusionRule("log4j", "*"))
-val junit = Seq(ExclusionRule("junit", "*"))
-
-lazy val root = (project in file(".")).
+lazy val homemote = (project in file(".")).
   enablePlugins(BuildInfoPlugin).
-  enablePlugins(RevolverPlugin).
-  enablePlugins(JavaServerAppPackaging, DebianPlugin, JDebPackaging, ClasspathJarPlugin).
+  enablePlugins(JavaServerAppPackaging, DebianPlugin, SystemdPlugin, JDebPackaging, ClasspathJarPlugin).
   settings(
     // General
     organization  := "io.homemote",
@@ -31,8 +28,8 @@ lazy val root = (project in file(".")).
     version in Debian := s"${DTF.ofPattern("yyyyMMddHHmmss").format(now)}+${version.value}",
     daemonUser in Debian := "homemote",
     daemonGroup in Debian := "homemote",
-    serverLoading in Debian := ServerLoader.Systemd,
-    debianPackageDependencies in Debian ++= Seq("java8-runtime", "librxtx-java", "elasticsearch (>= 5.0.0)"),
+    serverLoading in Debian := Some(Systemd),
+    debianPackageDependencies in Debian ++= Seq("java8-runtime", "librxtx-java"),
     //javaOptions in Universal += "-Djava.library.path=/usr/lib/jni/",
     scriptClasspath += "/usr/share/java/RXTXcomm.jar",
     bashScriptExtraDefines ++= Seq(
@@ -72,32 +69,27 @@ lazy val root = (project in file(".")).
       "com.typesafe.akka" %% "akka-http" % AkkaHttpVersion,
       "com.typesafe.akka" %% "akka-http-spray-json" % AkkaHttpVersion,
 
-      "org.scodec" %% "scodec-core" % "1.10.3",
+      "org.scodec" %% "scodec-core" % "1.11.4",
 
-      "org.elasticsearch.client" % "transport" % ElasticsearchVersion,
-      "org.apache.logging.log4j" % "log4j-to-slf4j" % "2.8.2",
-
-      "com.typesafe.play" %% "play-jdbc" % "2.6.3",
-      "com.typesafe.play" %% "anorm" % "2.5.3",
-      "org.postgresql" % "postgresql" % "42.1.4",
+      "com.typesafe.play" %% "play-jdbc" % PlayVersion,
+      "com.typesafe.play" %% "play-jdbc-evolutions" % PlayVersion,
+      "org.playframework.anorm" %% "anorm" % "2.6.4",
+      "org.postgresql" % "postgresql" % "42.2.6",
 
       "org.scaldi" %% "scaldi" % ScaldiVersion,
       "org.scaldi" %% "scaldi-akka" % ScaldiVersion,
-      "org.clapper" %% "classutil" % "1.1.2",
 
       "ch.qos.logback" % "logback-classic" % "1.2.3",
-      "com.typesafe.scala-logging" %% "scala-logging" % "3.7.2",
+      "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",
 
-      "com.typesafe.akka" %% "akka-testkit" % AkkaVersion % "test",
-      "com.typesafe.akka" %% "akka-http-testkit" % AkkaHttpVersion % "test",
+      // Tests
+      "com.typesafe.akka" %% "akka-testkit" % AkkaVersion % Test,
+      "com.typesafe.akka" %% "akka-http-testkit" % AkkaHttpVersion % Test,
 
-      "com.h2database" % "h2" % "1.4.196" % "test",
-
-      "org.mockito" % "mockito-core" % "1.10.19" % "test",
-      "org.scalatest" %% "scalatest" % "3.0.3" % "test"
+      "org.mockito" % "mockito-core" % "2.28.2" % Test,
+      "org.scalatest" %% "scalatest" % "3.0.8" % Test
     ),
 
     // Other
     parallelExecution in Test := false
-
   )

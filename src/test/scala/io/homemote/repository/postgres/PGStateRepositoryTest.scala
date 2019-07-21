@@ -5,7 +5,7 @@ import java.time.Instant
 import anorm._
 import io.homemote.model.{State, UniqueID}
 
-class PGStateRepositoryTest extends PGRepositoryTest {
+class PGStateRepositoryTest extends PostgresTest {
 
   it should "create state table" in { db =>
     // When

@@ -2,7 +2,7 @@ package io.homemote.repository.postgres
 
 import java.util.concurrent.Executors
 
-import anorm.{Column, MayErr, MetaDataItem, SqlRequestError, TypeDoesNotMatch, UnexpectedNullableFound}
+import anorm.{Column, MetaDataItem, TypeDoesNotMatch}
 
 import scala.concurrent.ExecutionContext
 import scala.util.Try

@@ -12,21 +12,6 @@ import scala.concurrent.{Future, blocking}
 
 class PGNodeRepository(db: Database) extends NodeRepository with PGRepository {
 
-  db.withConnection { implicit connection =>
-    SQL(
-      """CREATE TABLE IF NOT EXISTS "node" (
-        |  unique_id VARCHAR PRIMARY KEY,
-        |  network_id SMALLINT NOT NULL UNIQUE,
-        |  first_seen TIMESTAMP NOT NULL,
-        |  last_seen TIMESTAMP NOT NULL,
-        |  firmware_name VARCHAR NOT NULL,
-        |  firmware_version VARCHAR NOT NULL,
-        |  battery_voltage DECIMAL,
-        |  battery_timestamp TIMESTAMP,
-        |  tags VARCHAR[] NOT NULL
-        |)""".stripMargin).execute()
-  }
-
   private val nodeParser = (str("unique_id") ~ int("network_id") ~ getTyped[Instant]("first_seen") ~ getTyped[Instant]("last_seen") ~ str("firmware_name") ~ str("firmware_version") ~ double("battery_voltage").? ~ getTyped[Instant]("battery_timestamp").? ~ array[String]("tags")) map {
     case uid ~ nid ~ firstSeen ~ lastSeen ~ firmwareName ~ firmwareVersion ~ batteryVoltage ~ batteryTimestamp ~ tags =>
       Node(UniqueID(uid), NetworkID(nid), firstSeen, lastSeen, Firmware(firmwareName, firmwareVersion), for {voltage <- batteryVoltage; tmp <- batteryTimestamp} yield Battery(voltage, tmp), tags.toSet)

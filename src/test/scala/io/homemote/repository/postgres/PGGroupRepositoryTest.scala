@@ -1,15 +1,17 @@
 package io.homemote.repository.postgres
 
+import anorm.SqlParser.bool
 import anorm._
 import io.homemote.model.Group
 
-class PGGroupRepositoryTest extends PGRepositoryTest {
+class PGGroupRepositoryTest extends PostgresTest {
 
   it should "create group table" in { db =>
     // When
     new PGGroupRepository(db)
     // Then
-    db.withConnection(conn => conn.prepareStatement("SELECT 1 FROM \"group\"").execute() should be(true))
+    db.withConnection(implicit conn => SQL("""SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'group')""")
+      .as(bool(1).single) should be(true))
   }
 
   it should "insert group" in { db =>

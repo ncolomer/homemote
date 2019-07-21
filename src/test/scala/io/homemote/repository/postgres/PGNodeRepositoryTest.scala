@@ -5,7 +5,7 @@ import java.time.{Instant, LocalDateTime}
 import anorm.{BatchSql, NamedParameter, SQL}
 import io.homemote.model._
 
-class PGNodeRepositoryTest extends PGRepositoryTest {
+class PGNodeRepositoryTest extends PostgresTest {
 
   it should "create node table" in { db =>
     // When
@@ -169,8 +169,8 @@ class PGNodeRepositoryTest extends PGRepositoryTest {
     val repository = new PGNodeRepository(db)
     db.withConnection { implicit conn =>
       BatchSql("""INSERT INTO "node" VALUES({unique_id},{network_id},{first_seen},{last_seen},{firmware_name},{firmware_version},{battery_voltage},{battery_timestamp},{tags})""",
-        Seq[NamedParameter]('unique_id -> "98:01:a7:b3:7f:45:02:5e", 'network_id -> 10, 'first_seen -> now, 'last_seen -> now, 'firmware_name -> "firmware", 'firmware_version -> "1.0", 'battery_voltage -> 5.05, 'battery_timestamp -> now, 'tags -> Array[String]("tag1", "tag2")),
-        Seq[NamedParameter]('unique_id -> "98:01:a7:b3:7f:45:02:5f", 'network_id -> 11, 'first_seen -> now, 'last_seen -> now, 'firmware_name -> "firmware", 'firmware_version -> "1.0", 'battery_voltage -> Option.empty[Double], 'battery_timestamp -> Option.empty[Instant], 'tags -> Array[String]("tag2", "tag3")),
+        Seq('unique_id -> "98:01:a7:b3:7f:45:02:5e", 'network_id -> 10, 'first_seen -> now, 'last_seen -> now, 'firmware_name -> "firmware", 'firmware_version -> "1.0", 'battery_voltage -> 5.05, 'battery_timestamp -> now, 'tags -> Array[String]("tag1", "tag2")),
+        Seq('unique_id -> "98:01:a7:b3:7f:45:02:5f", 'network_id -> 11, 'first_seen -> now, 'last_seen -> now, 'firmware_name -> "firmware", 'firmware_version -> "1.0", 'battery_voltage -> Option.empty[Double], 'battery_timestamp -> Option.empty[Instant], 'tags -> Array[String]("tag2", "tag3")),
       ).execute()
     }
     // When
@@ -188,8 +188,8 @@ class PGNodeRepositoryTest extends PGRepositoryTest {
     val repository = new PGNodeRepository(db)
     db.withConnection { implicit conn =>
       BatchSql("""INSERT INTO "node" VALUES({unique_id},{network_id},{first_seen},{last_seen},{firmware_name},{firmware_version},{battery_voltage},{battery_timestamp},{tags})""",
-        Seq[NamedParameter]('unique_id -> "98:01:a7:b3:7f:45:02:5e", 'network_id -> 10, 'first_seen -> now, 'last_seen -> now, 'firmware_name -> "firmware", 'firmware_version -> "1.0", 'battery_voltage -> 5.05, 'battery_timestamp -> now, 'tags -> Array[String]("tag1", "tag2")),
-        Seq[NamedParameter]('unique_id -> "98:01:a7:b3:7f:45:02:5f", 'network_id -> 11, 'first_seen -> now, 'last_seen -> now, 'firmware_name -> "firmware", 'firmware_version -> "1.0", 'battery_voltage -> Option.empty[Double], 'battery_timestamp -> Option.empty[Instant], 'tags -> Array[String]("tag2", "tag3")),
+        Seq('unique_id -> "98:01:a7:b3:7f:45:02:5e", 'network_id -> 10, 'first_seen -> now, 'last_seen -> now, 'firmware_name -> "firmware", 'firmware_version -> "1.0", 'battery_voltage -> 5.05, 'battery_timestamp -> now, 'tags -> Array[String]("tag1", "tag2")),
+        Seq('unique_id -> "98:01:a7:b3:7f:45:02:5f", 'network_id -> 11, 'first_seen -> now, 'last_seen -> now, 'firmware_name -> "firmware", 'firmware_version -> "1.0", 'battery_voltage -> Option.empty[Double], 'battery_timestamp -> Option.empty[Instant], 'tags -> Array[String]("tag2", "tag3")),
       ).execute()
     }
     // When
@@ -208,8 +208,8 @@ class PGNodeRepositoryTest extends PGRepositoryTest {
     val repository = new PGNodeRepository(db)
     db.withConnection { implicit conn =>
       BatchSql("""INSERT INTO "node" VALUES({unique_id},{network_id},{first_seen},{last_seen},{firmware_name},{firmware_version},{battery_voltage},{battery_timestamp},{tags})""",
-        Seq[NamedParameter]('unique_id -> "98:01:a7:b3:7f:45:02:5e", 'network_id -> 10, 'first_seen -> now, 'last_seen -> now, 'firmware_name -> "firmware", 'firmware_version -> "1.0", 'battery_voltage -> 5.05, 'battery_timestamp -> now, 'tags -> Array[String]("tag1", "tag2")),
-        Seq[NamedParameter]('unique_id -> "98:01:a7:b3:7f:45:02:5f", 'network_id -> 11, 'first_seen -> now, 'last_seen -> now, 'firmware_name -> "firmware", 'firmware_version -> "1.0", 'battery_voltage -> Option.empty[Double], 'battery_timestamp -> Option.empty[Instant], 'tags -> Array[String]("tag2", "tag3")),
+        Seq('unique_id -> "98:01:a7:b3:7f:45:02:5e", 'network_id -> 10, 'first_seen -> now, 'last_seen -> now, 'firmware_name -> "firmware", 'firmware_version -> "1.0", 'battery_voltage -> 5.05, 'battery_timestamp -> now, 'tags -> Array[String]("tag1", "tag2")),
+        Seq('unique_id -> "98:01:a7:b3:7f:45:02:5f", 'network_id -> 11, 'first_seen -> now, 'last_seen -> now, 'firmware_name -> "firmware", 'firmware_version -> "1.0", 'battery_voltage -> Option.empty[Double], 'battery_timestamp -> Option.empty[Instant], 'tags -> Array[String]("tag2", "tag3")),
       ).execute()
     }
     // When

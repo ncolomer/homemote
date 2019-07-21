@@ -5,7 +5,7 @@ import java.time.Instant
 import anorm._
 import io.homemote.model.{Measure, UniqueID}
 
-class PGMeasureRepositoryTest extends PGRepositoryTest {
+class PGMeasureRepositoryTest extends PostgresTest {
 
   it should "create measure table" in { db =>
     // When
